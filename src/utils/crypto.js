@@ -54,7 +54,8 @@ const encrypt = (data, keyBase64) => {
   const iv = crypto.randomBytes(12) // 96-bit IV for GCM
 
   // Convert data to Buffer if needed
-  const dataBuffer = Buffer.isBuffer(data) ? data : Buffer.from(data)
+  const dataIsCopy = !Buffer.isBuffer(data)
+  const dataBuffer = dataIsCopy ? data : Buffer.from(data)
 
   // Use AES-256-GCM for authenticated encryption
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv)
@@ -65,11 +66,13 @@ const encrypt = (data, keyBase64) => {
   const result = Buffer.concat([iv, encrypted, authTag])
   const resultBase64 = result.toString('base64')
 
-  // Zero out sensitive buffers (caller should zero input data buffer)
+  // Zero out sensitive buffers
   memzero(key)
   memzero(iv)
   memzero(encrypted)
   memzero(authTag)
+  memzero(result)
+  if (dataIsCopy) memzero(dataBuffer)
 
   return resultBase64
 }
@@ -138,9 +141,11 @@ const encryptSecrets = (seed, entropy) => {
   const seedBuffer = Buffer.isBuffer(seed) ? seed : Buffer.from(seed)
   const entropyBuffer = Buffer.isBuffer(entropy) ? entropy : Buffer.from(entropy)
 
-  // Encrypt both secrets
+  // Encrypt both secrets including originals
   const encryptedSeedBuffer = encrypt(seedBuffer, encryptionKey)
   const encryptedEntropyBuffer = encrypt(entropyBuffer, encryptionKey)
+  if (seed !== seedBuffer) memzero(seed)
+  if (entropy !== entropyBuffer) memzero(entropy)
 
   // Zero out sensitive buffers
   memzero(seedBuffer)
