@@ -69,7 +69,7 @@ async function initializeWdkHandler (init, context) {
       ERROR_CODES.BAD_REQUEST
     )
   }
-  
+
   if (init.encryptionKey && init.encryptedSeed) {
     logger.info('Initializing WDK with encrypted seed')
     let decryptedSeedBuffer
@@ -84,7 +84,7 @@ async function initializeWdkHandler (init, context) {
 
     context.wdk = new WDK(decryptedSeedBuffer)
   }
-  
+
   if (!context.wdk) {
     throw createErrorWithCode(
       'WDK must be initialized with a seed before module registration.',
