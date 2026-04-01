@@ -50,15 +50,19 @@ async function initializeWdkHandler (init, context) {
       validateNonEmptyString(init.config, 'config')
       workletConfig = validateJSON(init.config, 'config')
 
-      // Validate encrypted seed and encryption key
-      if (!init.encryptionKey || !init.encryptedSeed) {
+      const isValidParams = (init.encryptedSeed && init.encryptionKey) || (!init.encryptedSeed && !init.encryptionKey)
+
+      if (!isValidParams) {
         throw createErrorWithCode(
-          '(encryptionKey + encryptedSeed) must be provided',
+          'encryptionKey and encryptedSeed must be provided or omitted',
           ERROR_CODES.BAD_REQUEST
         )
       }
-      validateBase64(init.encryptionKey, 'encryptionKey')
-      validateBase64(init.encryptedSeed, 'encryptedSeed')
+
+      if (init.encryptedSeed && init.encryptionKey) {
+        validateBase64(init.encryptionKey, 'encryptionKey')
+        validateBase64(init.encryptedSeed, 'encryptedSeed')
+      }
     },
     'Init'
   )
@@ -75,18 +79,27 @@ async function initializeWdkHandler (init, context) {
     )
   }
 
-  logger.info('Initializing WDK with encrypted seed')
-  let decryptedSeedBuffer
-  try {
-    decryptedSeedBuffer = decrypt(init.encryptedSeed, init.encryptionKey)
-  } catch (error) {
-    throw createErrorWithCode(
-      `Failed to decrypt seed: ${error.message}`,
-      ERROR_CODES.BAD_REQUEST
-    )
+  if (init.encryptionKey && init.encryptedSeed) {
+    logger.info('Initializing WDK with encrypted seed')
+    let decryptedSeedBuffer
+    try {
+      decryptedSeedBuffer = decrypt(init.encryptedSeed, init.encryptionKey)
+    } catch (error) {
+      throw createErrorWithCode(
+        `Failed to decrypt seed: ${error.message}`,
+        ERROR_CODES.BAD_REQUEST
+      )
+    }
+
+    context.wdk = new WDK(decryptedSeedBuffer)
   }
 
-  context.wdk = new WDK(decryptedSeedBuffer)
+  if (!context.wdk) {
+    throw createErrorWithCode(
+      'WDK must be initialized with a seed before module registration.',
+      ERROR_CODES.WDK_MANAGER_INIT
+    )
+  }
 
   for (const networkConfig of Object.values(workletConfig.networks)) {
     const networkName = networkConfig.blockchain

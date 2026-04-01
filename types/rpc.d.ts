@@ -78,8 +78,8 @@ export interface CallMethodOptions {
 }
 
 export interface WdkInitializeParams {
-  encryptionKey: string;
-  encryptedSeed: string;
+  encryptionKey?: string;
+  encryptedSeed?: string;
   
   // JSON string of WdkWorkletConfig
   config: string; 
